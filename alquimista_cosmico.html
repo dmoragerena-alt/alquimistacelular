@@ -1,0 +1,1464 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alquimista Cosmico - Simulador ICFES</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600;700&display=swap');
+
+        :root {
+            --neon-cyan: #00f0ff;
+            --neon-blue: #0066ff;
+            --neon-purple: #b829dd;
+            --neon-green: #00ff88;
+            --neon-red: #ff3366;
+            --neon-yellow: #ffcc00;
+            --dark-bg: #0a0e1a;
+            --panel-bg: rgba(10, 20, 40, 0.85);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Rajdhani', sans-serif;
+            background: var(--dark-bg);
+            color: #e0e8ff;
+            min-height: 100vh;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        .stars {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .star {
+            position: absolute;
+            width: 2px; height: 2px;
+            background: white;
+            border-radius: 50%;
+            animation: twinkle var(--duration) ease-in-out infinite;
+            opacity: var(--opacity);
+        }
+
+        @keyframes twinkle {
+            0%, 100% { opacity: var(--opacity); transform: scale(1); }
+            50% { opacity: 0.2; transform: scale(0.5); }
+        }
+
+        .screen {
+            display: none;
+            position: relative;
+            z-index: 1;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .screen.active {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .title-screen { text-align: center; }
+
+        .game-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: clamp(2rem, 6vw, 4.5rem);
+            font-weight: 900;
+            background: linear-gradient(135deg, var(--neon-cyan), var(--neon-purple), var(--neon-blue));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 10px;
+            letter-spacing: 3px;
+            animation: titleGlow 3s ease-in-out infinite;
+        }
+
+        @keyframes titleGlow {
+            0%, 100% { filter: brightness(1); }
+            50% { filter: brightness(1.3); }
+        }
+
+        .subtitle {
+            font-size: 1.3rem;
+            color: var(--neon-cyan);
+            margin-bottom: 40px;
+            letter-spacing: 5px;
+            text-transform: uppercase;
+        }
+
+        .story-box {
+            max-width: 700px;
+            background: var(--panel-bg);
+            border: 1px solid rgba(0, 240, 255, 0.2);
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 0 30px rgba(0, 240, 255, 0.1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .story-box::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--neon-cyan), transparent);
+            animation: scanLine 3s linear infinite;
+        }
+
+        @keyframes scanLine {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        .story-text {
+            font-size: 1.1rem;
+            line-height: 1.8;
+            color: #b0c4de;
+        }
+
+        .story-text strong { color: var(--neon-cyan); }
+
+        .btn {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.1rem;
+            padding: 15px 50px;
+            border: 2px solid var(--neon-cyan);
+            background: transparent;
+            color: var(--neon-cyan);
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            position: relative;
+            overflow: hidden;
+            margin: 10px;
+        }
+
+        .btn:hover {
+            background: var(--neon-cyan);
+            color: var(--dark-bg);
+            box-shadow: 0 0 30px var(--neon-cyan), 0 0 60px rgba(0, 240, 255, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, rgba(0, 240, 255, 0.2), rgba(0, 102, 255, 0.2));
+        }
+
+        .hud {
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 30px;
+            background: rgba(10, 14, 26, 0.9);
+            border-bottom: 1px solid rgba(0, 240, 255, 0.2);
+            z-index: 100;
+            backdrop-filter: blur(10px);
+        }
+
+        .hud-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-family: 'Orbitron', sans-serif;
+        }
+
+        .hud-label {
+            font-size: 0.75rem;
+            color: #6677aa;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .hud-value {
+            font-size: 1.3rem;
+            color: var(--neon-cyan);
+            font-weight: 700;
+        }
+
+        .hud-bar {
+            width: 150px;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .hud-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--neon-green), var(--neon-cyan));
+            border-radius: 4px;
+            transition: width 0.5s ease;
+        }
+
+        .game-area {
+            margin-top: 80px;
+            width: 100%;
+            max-width: 900px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 25px;
+        }
+
+        .level-header { text-align: center; margin-bottom: 10px; }
+
+        .level-number {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.9rem;
+            color: var(--neon-purple);
+            letter-spacing: 3px;
+            text-transform: uppercase;
+        }
+
+        .level-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: clamp(1.2rem, 3vw, 2rem);
+            color: var(--neon-cyan);
+            margin-top: 5px;
+        }
+
+        .level-desc {
+            color: #8899bb;
+            font-size: 1rem;
+            margin-top: 5px;
+        }
+
+        .question-card {
+            width: 100%;
+            background: var(--panel-bg);
+            border: 1px solid rgba(0, 240, 255, 0.15);
+            border-radius: 20px;
+            padding: 30px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .question-card::after {
+            content: '';
+            position: absolute;
+            bottom: 0; left: 0; right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--neon-cyan), var(--neon-purple), var(--neon-blue));
+        }
+
+        .question-number {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.8rem;
+            color: var(--neon-yellow);
+            margin-bottom: 15px;
+            letter-spacing: 2px;
+        }
+
+        .question-text {
+            font-size: 1.2rem;
+            line-height: 1.7;
+            color: #e0e8ff;
+            margin-bottom: 25px;
+        }
+
+        .question-image {
+            width: 100%;
+            max-width: 500px;
+            margin: 15px auto;
+            display: block;
+            border-radius: 10px;
+            border: 1px solid rgba(0, 240, 255, 0.2);
+        }
+
+        .options-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 12px;
+        }
+
+        .option-btn {
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 1.1rem;
+            font-weight: 600;
+            padding: 18px 25px;
+            border: 1px solid rgba(0, 240, 255, 0.2);
+            background: rgba(0, 20, 40, 0.6);
+            color: #c0d0e8;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: left;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .option-btn::before {
+            content: '';
+            position: absolute;
+            left: 0; top: 0; bottom: 0;
+            width: 4px;
+            background: var(--neon-cyan);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .option-btn:hover {
+            background: rgba(0, 240, 255, 0.1);
+            border-color: var(--neon-cyan);
+            transform: translateX(5px);
+        }
+
+        .option-btn:hover::before { opacity: 1; }
+
+        .option-btn.correct {
+            background: rgba(0, 255, 136, 0.15);
+            border-color: var(--neon-green);
+            color: var(--neon-green);
+        }
+
+        .option-btn.correct::before { background: var(--neon-green); opacity: 1; }
+
+        .option-btn.incorrect {
+            background: rgba(255, 51, 102, 0.15);
+            border-color: var(--neon-red);
+            color: var(--neon-red);
+        }
+
+        .option-btn.incorrect::before { background: var(--neon-red); opacity: 1; }
+
+        .option-btn.disabled { pointer-events: none; opacity: 0.6; }
+
+        .feedback-box {
+            width: 100%;
+            padding: 20px;
+            border-radius: 15px;
+            margin-top: 15px;
+            display: none;
+            animation: slideUp 0.4s ease;
+        }
+
+        .feedback-box.show { display: block; }
+
+        .feedback-box.correct {
+            background: rgba(0, 255, 136, 0.1);
+            border: 1px solid var(--neon-green);
+        }
+
+        .feedback-box.incorrect {
+            background: rgba(255, 51, 102, 0.1);
+            border: 1px solid var(--neon-red);
+        }
+
+        .feedback-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.1rem;
+            margin-bottom: 8px;
+        }
+
+        .feedback-box.correct .feedback-title { color: var(--neon-green); }
+        .feedback-box.incorrect .feedback-title { color: var(--neon-red); }
+
+        .feedback-text {
+            font-size: 1rem;
+            line-height: 1.6;
+            color: #b0c4de;
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .graph-container {
+            width: 100%;
+            max-width: 600px;
+            margin: 20px auto;
+            background: rgba(0, 10, 20, 0.8);
+            border: 1px solid rgba(0, 240, 255, 0.2);
+            border-radius: 10px;
+            padding: 20px;
+        }
+
+        canvas { width: 100%; height: auto; }
+
+        .level-result { text-align: center; padding: 40px; }
+
+        .result-icon { font-size: 5rem; margin-bottom: 20px; }
+
+        .result-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 2rem;
+            margin-bottom: 15px;
+        }
+
+        .result-stats {
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            margin: 30px 0;
+            flex-wrap: wrap;
+        }
+
+        .stat-item { text-align: center; }
+
+        .stat-value {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 2.5rem;
+            color: var(--neon-cyan);
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            color: #6677aa;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .final-screen { text-align: center; }
+
+        .final-rank {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 3rem;
+            margin: 20px 0;
+            background: linear-gradient(135deg, var(--neon-yellow), var(--neon-cyan));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .rank-badge {
+            display: inline-block;
+            padding: 15px 40px;
+            border: 2px solid var(--neon-yellow);
+            border-radius: 50px;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.2rem;
+            color: var(--neon-yellow);
+            margin: 20px 0;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 20px rgba(255, 204, 0, 0.3); }
+            50% { box-shadow: 0 0 40px rgba(255, 204, 0, 0.6); }
+        }
+
+        .particles-container {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            pointer-events: none;
+            z-index: 0;
+            overflow: hidden;
+        }
+
+        .particle {
+            position: absolute;
+            border-radius: 50%;
+            pointer-events: none;
+        }
+
+        @media (max-width: 768px) {
+            .hud { padding: 10px 15px; flex-wrap: wrap; gap: 10px; }
+            .hud-bar { width: 100px; }
+            .game-area { margin-top: 100px; padding: 10px; }
+            .question-card { padding: 20px; }
+            .result-stats { gap: 20px; }
+        }
+
+        .level-nav {
+            display: flex;
+            gap: 15px;
+            margin: 20px 0;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .level-dot {
+            width: 50px; height: 50px;
+            border-radius: 50%;
+            border: 2px solid rgba(0, 240, 255, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1rem;
+            color: rgba(0, 240, 255, 0.5);
+            cursor: default;
+            transition: all 0.3s;
+        }
+
+        .level-dot.active {
+            border-color: var(--neon-cyan);
+            color: var(--neon-cyan);
+            box-shadow: 0 0 20px rgba(0, 240, 255, 0.3);
+            animation: dotPulse 2s ease-in-out infinite;
+        }
+
+        .level-dot.completed {
+            border-color: var(--neon-green);
+            color: var(--neon-green);
+            background: rgba(0, 255, 136, 0.1);
+        }
+
+        @keyframes dotPulse {
+            0%, 100% { box-shadow: 0 0 10px rgba(0, 240, 255, 0.3); }
+            50% { box-shadow: 0 0 25px rgba(0, 240, 255, 0.6); }
+        }
+
+        .timer-container {
+            position: fixed;
+            top: 70px;
+            right: 30px;
+            z-index: 99;
+        }
+
+        .timer-circle {
+            width: 60px; height: 60px;
+            border-radius: 50%;
+            border: 3px solid rgba(0, 240, 255, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.2rem;
+            color: var(--neon-cyan);
+        }
+
+        .timer-circle.urgent {
+            border-color: var(--neon-red);
+            color: var(--neon-red);
+            animation: timerPulse 1s ease-in-out infinite;
+        }
+
+        @keyframes timerPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+    </style>
+</head>
+<body>
+    <div class="stars" id="stars"></div>
+    <div class="particles-container" id="particles"></div>
+
+    <!-- PANTALLA DE INICIO -->
+    <div class="screen active" id="screen-start">
+        <div class="title-screen">
+            <h1 class="game-title">ALQUIMISTA COSMICO</h1>
+            <p class="subtitle">Simulador de Materia - ICFES</p>
+
+            <div class="story-box">
+                <p class="story-text">
+                    <strong>ALERTA CRITICA:</strong> El nucleo de energia de la Estacion Cientifica Intergalactica 
+                    <strong>"Nebula Prime"</strong> se ha desestabilizado. Las ondas de energia estan alterando los estados 
+                    de la materia a su alrededor, poniendo en peligro a toda la tripulacion.
+                    <br><br>
+                    Como <strong>Ingeniero de Materiales</strong>, tu mision es restaurar el orden molecular analizando 
+                    el comportamiento de las sustancias, resolviendo problemas de cambios de estado y propiedades fisicas.
+                    <br><br>
+                    <strong style="color: var(--neon-yellow)">⚠️ Solo un puntaje perfecto estabilizara el nucleo.</strong>
+                </p>
+            </div>
+
+            <div class="level-nav" id="start-level-nav">
+                <div class="level-dot" data-level="0">1</div>
+                <div class="level-dot" data-level="1">2</div>
+                <div class="level-dot" data-level="2">3</div>
+                <div class="level-dot" data-level="3">4</div>
+            </div>
+
+            <button class="btn btn-primary" onclick="startGame()">
+                🚀 INICIAR MISION
+            </button>
+        </div>
+    </div>
+
+    <!-- PANTALLA DE JUEGO -->
+    <div class="screen" id="screen-game">
+        <div class="hud">
+            <div class="hud-item">
+                <div>
+                    <div class="hud-label">Nivel</div>
+                    <div class="hud-value" id="hud-level">1/4</div>
+                </div>
+            </div>
+            <div class="hud-item">
+                <div>
+                    <div class="hud-label">Puntaje</div>
+                    <div class="hud-value" id="hud-score">0</div>
+                </div>
+            </div>
+            <div class="hud-item">
+                <div>
+                    <div class="hud-label">Energia del Nucleo</div>
+                    <div class="hud-bar">
+                        <div class="hud-bar-fill" id="hud-energy" style="width: 100%"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="hud-item">
+                <div>
+                    <div class="hud-label">Pregunta</div>
+                    <div class="hud-value" id="hud-question">1/5</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="timer-container">
+            <div class="timer-circle" id="timer">60</div>
+        </div>
+
+        <div class="game-area">
+            <div class="level-header">
+                <div class="level-number" id="level-number">NIVEL 1</div>
+                <div class="level-title" id="level-title">El Despertar de las Particulas</div>
+                <div class="level-desc" id="level-desc">Estados fundamentales de la materia</div>
+            </div>
+
+            <div class="question-card" id="question-card">
+                <div class="question-number" id="question-number">PREGUNTA 1 DE 5</div>
+                <div class="question-text" id="question-text"></div>
+                <div id="question-extra"></div>
+                <div class="options-grid" id="options-grid"></div>
+                <div class="feedback-box" id="feedback-box">
+                    <div class="feedback-title" id="feedback-title"></div>
+                    <div class="feedback-text" id="feedback-text"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- PANTALLA DE RESULTADO DE NIVEL -->
+    <div class="screen" id="screen-level-result">
+        <div class="level-result">
+            <div class="result-icon" id="result-icon">🏆</div>
+            <div class="result-title" id="result-title">¡NIVEL COMPLETADO!</div>
+            <div class="story-box" style="max-width: 500px;">
+                <p class="story-text" id="result-story"></p>
+            </div>
+            <div class="result-stats">
+                <div class="stat-item">
+                    <div class="stat-value" id="stat-correct">0</div>
+                    <div class="stat-label">Correctas</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="stat-score">0</div>
+                    <div class="stat-label">Puntaje</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="stat-accuracy">0%</div>
+                    <div class="stat-label">Precision</div>
+                </div>
+            </div>
+            <button class="btn btn-primary" id="next-level-btn" onclick="nextLevel()">
+                SIGUIENTE NIVEL →
+            </button>
+        </div>
+    </div>
+
+    <!-- PANTALLA FINAL -->
+    <div class="screen" id="screen-final">
+        <div class="final-screen">
+            <h1 class="game-title" style="font-size: 3rem;">MISION TERMINADA</h1>
+            <div class="final-rank" id="final-rank">INVESTIGADOR ESTELAR</div>
+            <div class="rank-badge" id="rank-badge">⭐ PUNTAJE FINAL</div>
+
+            <div class="result-stats" style="margin: 40px 0;">
+                <div class="stat-item">
+                    <div class="stat-value" id="final-total-score">0</div>
+                    <div class="stat-label">Puntaje Total</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="final-total-correct">0</div>
+                    <div class="stat-label">Respuestas Correctas</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="final-accuracy">0%</div>
+                    <div class="stat-label">Precision Global</div>
+                </div>
+            </div>
+
+            <div class="story-box" style="max-width: 600px; margin-bottom: 30px;">
+                <p class="story-text" id="final-story"></p>
+            </div>
+
+            <div style="display: flex; gap: 15px; flex-wrap: wrap; justify-content: center;">
+                <button class="btn" onclick="restartGame()">🔄 REINICIAR MISION</button>
+                <button class="btn btn-primary" onclick="showStartScreen()">📊 VER ESTADISTICAS</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+
+        // ==================== DATOS DEL JUEGO ====================
+        const levels = [
+            {
+                name: "El Despertar de las Particulas",
+                subtitle: "Estados fundamentales de la materia",
+                description: "Estabiliza los contenedores de combustible clasificando los estados fisicos",
+                story: "Los tanques de combustible criogenico estan perdiendo estabilidad. Debes identificar correctamente el comportamiento molecular de cada sustancia para recalibrar los escudos de contencion.",
+                questions: [
+                    {
+                        text: "En un experimento de laboratorio espacial, se observan tres sustancias diferentes: la sustancia A tiene forma y volumen definidos; la sustancia B tiene volumen definido pero toma la forma de su recipiente; la sustancia C no tiene ni forma ni volumen definidos. Cual es la clasificacion correcta de A, B y C respectivamente?",
+                        options: [
+                            "Solido, liquido, gas",
+                            "Liquido, gas, solido",
+                            "Gas, solido, liquido",
+                            "Solido, gas, liquido"
+                        ],
+                        correct: 0,
+                        explanation: "Los solidos tienen forma y volumen definidos (particulas muy unidas y ordenadas). Los liquidos tienen volumen definido pero toman la forma del recipiente (particulas mas separadas, pueden deslizarse). Los gases no tienen forma ni volumen definidos (particulas muy separadas y en movimiento caotico)."
+                    },
+                    {
+                        text: "Segun el modelo cinetico-molecular, cual de las siguientes afirmaciones describe correctamente el comportamiento de las particulas en un gas a temperatura constante?",
+                        options: [
+                            "Las particulas estan en reposo y solo vibran alrededor de posiciones fijas",
+                            "Las particulas se mueven en linea recta y al azar, chocando entre si y con las paredes del recipiente",
+                            "Las particulas estan muy unidas y solo pueden vibrar ligeramente",
+                            "Las particulas forman una estructura rigida y cristalina"
+                        ],
+                        correct: 1,
+                        explanation: "En el modelo cinetico-molecular, las particulas de un gas se mueven en linea recta y al azar (movimiento browniano), chocando entre si y con las paredes del recipiente. Estos choques contra las paredes generan la presion del gas."
+                    },
+                    {
+                        text: "Un tecnico de la estacion espacial observa que al aumentar la temperatura de un gas contenido en un recipiente rigido, la presion tambien aumenta. Segun el modelo cinetico-molecular, cual es la explicacion correcta de este fenomeno?",
+                        options: [
+                            "Las particulas del gas se expanden y ocupan mas volumen",
+                            "Las particulas del gas se mueven mas rapido y chocan con mas fuerza y frecuencia contra las paredes",
+                            "Las particulas del gas se fusionan entre si aumentando su masa",
+                            "Las particulas del gas se condensan en la superficie del recipiente"
+                        ],
+                        correct: 1,
+                        explanation: "Al aumentar la temperatura, las particulas del gas ganan energia cinetica y se mueven mas rapido. Esto provoca que choquen con mayor fuerza y frecuencia contra las paredes del recipiente, lo que se manifiesta como un aumento de la presion (Ley de Gay-Lussac)."
+                    },
+                    {
+                        text: "En la camara de criogenia de la nave, el hielo se mantiene a -50 grados C. Si se aumenta gradualmente la temperatura hasta 120 grados C a presion atmosferica normal, cual es la secuencia correcta de los cambios de estado que experimentara el agua?",
+                        options: [
+                            "Solido -> Gas -> Liquido",
+                            "Solido -> Liquido -> Gas",
+                            "Liquido -> Gas -> Solido",
+                            "Solido -> Liquido -> Solido"
+                        ],
+                        correct: 1,
+                        explanation: "A presion atmosferica normal: a -50 grados C el agua esta solida (hielo). Al calentar, alcanza 0 grados C y se derrite (fusion: solido -> liquido). Continuando el calentamiento, alcanza 100 grados C y se evapora (vaporizacion: liquido -> gas)."
+                    },
+                    {
+                        text: "Una sustancia desconocida encontrada en un asteroide tiene las siguientes caracteristicas: las particulas estan muy juntas y ordenadas en una estructura cristalina; no fluye; tiene una forma definida. En que estado de la materia se encuentra esta sustancia?",
+                        options: [
+                            "Liquido, porque las particulas estan juntas",
+                            "Gas, porque tiene estructura definida",
+                            "Solido, porque las particulas estan ordenadas y tienen forma definida",
+                            "Plasma, porque fue encontrada en un asteroide"
+                        ],
+                        correct: 2,
+                        explanation: "Las caracteristicas descritas (particulas muy juntas y ordenadas en estructura cristalina, forma definida, no fluye) son propias del estado solido. En los solidos, las particulas vibran alrededor de posiciones fijas en una red cristalina."
+                    }
+                ]
+            },
+            {
+                name: "La Frontera del Cambio",
+                subtitle: "Cambios de estado y energia termica",
+                description: "Regula la temperatura de la estacion para evitar expansiones peligrosas",
+                story: "Los sistemas de climatizacion han fallado. Los gases se expanden peligrosamente y los liquidos se congelan. Debes entender los cambios de estado para recalibrar los termostatos de emergencia.",
+                questions: [
+                    {
+                        text: "Un estudiante deja un vaso con hielo y agua sobre la mesa de la estacion. Despues de una hora, nota gotas de agua en la parte EXTERIOR del vaso. Que cambio de estado ocurrio y cual es la causa?",
+                        options: [
+                            "Fusion: el hielo dentro del vaso se derritio",
+                            "Condensacion: el vapor de agua del aire se enfrio al contacto con el vaso frio y paso a liquido",
+                            "Evaporacion: el agua del vaso se evaporo y luego se condenso",
+                            "Sublimacion: el hielo paso directamente a vapor"
+                        ],
+                        correct: 1,
+                        explanation: "Las gotas en el exterior del vaso se forman por CONDENSACION: el vapor de agua presente en el aire ambiente entra en contacto con la superficie fria del vaso (enfriada por el hielo), pierde energia termica y cambia de gas a liquido."
+                    },
+                    {
+                        text: "En el proceso de fusion de una sustancia pura a presion constante, que ocurre con la temperatura mientras la sustancia esta cambiando de solido a liquido?",
+                        options: [
+                            "La temperatura aumenta constantemente",
+                            "La temperatura disminuye constantemente",
+                            "La temperatura permanece constante mientras coexisten ambos estados",
+                            "La temperatura fluctua de manera aleatoria"
+                        ],
+                        correct: 2,
+                        explanation: "Durante un cambio de estado a presion constante (como la fusion), la temperatura permanece CONSTANTE mientras coexisten ambos estados. La energia termica que se suministra se utiliza para romper las fuerzas de atraccion entre las particulas (calor latente de fusion), no para aumentar la temperatura."
+                    },
+                    {
+                        text: "Un ingeniero necesita convertir 100g de hielo a 0 grados C en agua liquida a 0 grados C. Sabiendo que el calor latente de fusion del hielo es 334 J/g, cuanta energia termica se requiere?",
+                        options: [
+                            "33.4 J",
+                            "334 J",
+                            "3,340 J",
+                            "33,400 J"
+                        ],
+                        correct: 3,
+                        explanation: "Usamos la formula: Q = m x Lf, donde m = 100g y Lf = 334 J/g. Entonces: Q = 100g x 334 J/g = 33,400 J. Este es el calor latente necesario para romper las fuerzas de enlace del hielo sin cambiar la temperatura."
+                    },
+                    {
+                        text: "En la camara de sublimacion de la estacion, se observa que el hielo seco (dioxido de carbono solido) desaparece sin dejar liquido. Cual es el nombre del cambio de estado que ocurre cuando una sustancia pasa directamente de solido a gas?",
+                        options: [
+                            "Fusion",
+                            "Vaporizacion",
+                            "Sublimacion",
+                            "Condensacion"
+                        ],
+                        correct: 2,
+                        explanation: "La SUBLIMACION es el cambio de estado directo de solido a gas, sin pasar por el estado liquido. El hielo seco (CO2 solido) es el ejemplo clasico: a presion atmosferica normal, sublima a -78.5 grados C."
+                    },
+                    {
+                        text: "Se calienta un liquido en un recipiente abierto. Se observa que la temperatura aumenta hasta cierto punto y luego se mantiene constante mientras se forman burbujas en todo el volumen del liquido. Que fenomeno se esta describiendo?",
+                        options: [
+                            "Evaporacion en la superficie",
+                            "Ebullicion",
+                            "Condensacion",
+                            "Congelacion"
+                        ],
+                        correct: 1,
+                        explanation: "La EBULLICION es el cambio de estado de liquido a gas que ocurre a una temperatura especifica (punto de ebullicion) y en todo el volumen del liquido (no solo en la superficie). Durante la ebullicion, la temperatura permanece constante mientras se suministra calor latente de vaporizacion."
+                    }
+                ]
+            },
+            {
+                name: "El Laberinto de las Propiedades",
+                subtitle: "Propiedades de la materia y densidad",
+                description: "Identifica el material misterioso que bloquea las compuertas analizando sus propiedades",
+                story: "Un material desconocido ha bloqueado las compuertas de la bahia de carga. No podemos moverlo sin saber sus propiedades. Analiza sus caracteristicas para determinar que sustancia es y como manipularla.",
+                questions: [
+                    {
+                        text: "Un objeto tiene una masa de 240g y ocupa un volumen de 30cm cubicos. Cual es su densidad y flotara en agua (densidad del agua = 1 g/cm cubico)?",
+                        options: [
+                            "8 g/cm cubico - Si flotara",
+                            "8 g/cm cubico - No flotara",
+                            "0.125 g/cm cubico - Si flotara",
+                            "7,200 g/cm cubico - No flotara"
+                        ],
+                        correct: 1,
+                        explanation: "Densidad = Masa / Volumen = 240g / 30cm cubicos = 8 g/cm cubico. Como la densidad del objeto (8 g/cm cubico) es MAYOR que la del agua (1 g/cm cubico), el objeto NO flotara. Los objetos mas densos que el agua se hunden."
+                    },
+                    {
+                        text: "Cual de las siguientes es una propiedad INTENSIVA de la materia?",
+                        options: [
+                            "Masa",
+                            "Volumen",
+                            "Densidad",
+                            "Peso"
+                        ],
+                        correct: 2,
+                        explanation: "La DENSIDAD es una propiedad INTENSIVA porque NO depende de la cantidad de materia. La masa, el volumen y el peso son propiedades EXTENSIVAS porque cambian segun la cantidad de sustancia. La densidad (D = M/V) es una relacion que permanece constante para una sustancia pura."
+                    },
+                    {
+                        text: "Un quimico tiene dos muestras de oro puro: una de 5g y otra de 50g. Cual de las siguientes propiedades sera DIFERENTE entre ambas muestras?",
+                        options: [
+                            "Punto de fusion",
+                            "Densidad",
+                            "Color",
+                            "Masa"
+                        ],
+                        correct: 3,
+                        explanation: "La MASA es una propiedad EXTENSIVA que depende de la cantidad de materia. Las muestras de 5g y 50g tendran masas diferentes. El punto de fusion, la densidad y el color son propiedades INTENSIVAS que seran IGUALES en ambas muestras (para oro puro)."
+                    },
+                    {
+                        text: "Se calienta un trozo de papel hasta que se enciende y se convierte en ceniza. Este proceso representa un cambio fisico o quimico? Justifica tu respuesta.",
+                        options: [
+                            "Cambio fisico, porque el papel cambio de forma",
+                            "Cambio quimico, porque se formaron nuevas sustancias (ceniza, humo, gases) con propiedades diferentes al papel original",
+                            "Cambio fisico, porque la masa se conserva",
+                            "Cambio quimico, porque cambio de color"
+                        ],
+                        correct: 1,
+                        explanation: "Es un CAMBIO QUIMICO porque se formaron NUEVAS SUSTANCIAS (ceniza, dioxido de carbono, vapor de agua) con propiedades quimicas y fisicas diferentes al papel original. La combustion es una reaccion quimica de oxidacion. En un cambio fisico, la sustancia permanece siendo la misma."
+                    },
+                    {
+                        text: "Un liquido desconocido tiene las siguientes propiedades: punto de ebullicion 100 grados C, punto de fusion 0 grados C, densidad 1 g/cm cubico, incoloro e inodoro. Que sustancia es probablemente?",
+                        options: [
+                            "Alcohol etilico",
+                            "Mercurio",
+                            "Agua pura",
+                            "Aceite vegetal"
+                        ],
+                        correct: 2,
+                        explanation: "Las propiedades descritas corresponden al AGUA PURA: punto de ebullicion 100 grados C, punto de fusion 0 grados C, densidad 1 g/cm cubico a 4 grados C, incolora e inodora. Estas son propiedades intensivas caracteristicas que permiten identificar una sustancia. El alcohol hierve a 78 grados C, el mercurio es metalico y denso (13.6 g/cm cubico)."
+                    }
+                ]
+            },
+            {
+                name: "El Reporte del Investigador",
+                subtitle: "Interpretacion de graficas y datos experimentales",
+                description: "Entrega el informe cientifico final al comite de la estacion espacial",
+                story: "Has llegado al nucleo de energia. Para estabilizarlo definitivamente, debes interpretar las graficas de calentamiento y los datos experimentales del reactor. El comite espacial espera tu informe final.",
+                questions: [
+                    {
+                        text: "Observa la siguiente grafica de calentamiento de una sustancia pura (Temperatura vs. Tiempo). Durante el segmento B-C, la temperatura permanece constante a 80 grados C mientras se suministra calor. Que esta ocurriendo en este segmento?",
+                        options: [
+                            "La sustancia esta en estado solido y aumentando de temperatura",
+                            "La sustancia esta cambiando de solido a liquido (fusion) a temperatura constante",
+                            "La sustancia esta en estado liquido y aumentando de temperatura",
+                            "La sustancia esta cambiando de liquido a gas (ebullicion)"
+                        ],
+                        correct: 1,
+                        explanation: "El segmento horizontal (meseta) en una grafica de calentamiento indica un CAMBIO DE ESTADO a temperatura constante. Si ocurre a 80 grados C (temperatura intermedia), es la FUSION (solido -> liquido). La energia se usa como calor latente de fusion, no para aumentar la temperatura.",
+                        hasGraph: true,
+                        graphType: "heating"
+                    },
+                    {
+                        text: "En una grafica de calentamiento de una sustancia pura, se observan dos mesetas (segmentos horizontales): una a 0 grados C y otra a 100 grados C. Que sustancia se esta calentando?",
+                        options: [
+                            "Alcohol",
+                            "Agua pura a presion atmosferica normal",
+                            "Mercurio",
+                            "No se puede determinar con esta informacion"
+                        ],
+                        correct: 1,
+                        explanation: "Las mesetas a 0 grados C (punto de fusion) y 100 grados C (punto de ebullicion) son caracteristicas del AGUA PURA a presion atmosferica normal (1 atm). Estos valores cambian si varia la presion, pero a 1 atm son propiedades intensivas distintivas del agua.",
+                        hasGraph: true,
+                        graphType: "water"
+                    },
+                    {
+                        text: "Un estudiante realiza un experimento calentando 200g de hielo desde -20 grados C hasta 120 grados C. Observa que el hielo tarda 5 minutos en pasar de -20 grados C a 0 grados C, pero la temperatura se mantiene en 0 grados C durante 30 minutos mientras se derrite. Que conclusion se puede sacar?",
+                        options: [
+                            "El hielo se derrite mas rapido de lo esperado",
+                            "El calor latente de fusion requiere mas energia que el calor especifico del hielo",
+                            "El calentador fallo durante la fusion",
+                            "La temperatura de fusion del hielo es variable"
+                        ],
+                        correct: 1,
+                        explanation: "La conclusion correcta es que el CALOR LATENTE DE FUSION requiere MUCHA mas energia que el calor especifico. Aunque la temperatura no cambia durante la fusion, se necesita gran cantidad de energia para romper los enlaces entre las moleculas de hielo. Esto explica por que tardo 30 minutos en fundir vs. solo 5 minutos para calentar 20 grados C."
+                    },
+                    {
+                        text: "En la siguiente tabla de datos experimentales, cual sustancia tiene el punto de ebullicion mas alto y por que es util conocer esta propiedad?\n\nSustancia A: PF=-39 grados C, PE=357 grados C\nSustancia B: PF=0 grados C, PE=100 grados C\nSustancia C: PF=117 grados C, PE=78 grados C",
+                        options: [
+                            "Sustancia A (Mercurio), util para termometros de alta temperatura",
+                            "Sustancia B (Agua), util para cocinar",
+                            "Sustancia C (Alcohol), util como combustible",
+                            "No se puede determinar"
+                        ],
+                        correct: 0,
+                        explanation: "La Sustancia A (Mercurio) tiene el punto de ebullicion mas alto (357 grados C). Conocer el punto de ebullicion es crucial para determinar en que rango de temperatura una sustancia permanece liquida. El mercurio se usa en termometros porque es liquido en un amplio rango de temperaturas (-39 grados C a 357 grados C)."
+                    },
+                    {
+                        text: "Una grafica muestra el enfriamiento de un gas desde 150 grados C hasta 20 grados C. Se observa una meseta a 100 grados C durante 15 minutos. Si se toma una muestra de la sustancia a los 10 minutos de iniciado el enfriamiento (durante la meseta), en que estado(s) se encuentra la sustancia?",
+                        options: [
+                            "Solo en estado gaseoso",
+                            "Solo en estado liquido",
+                            "En ambos estados (liquido y gas) coexistiendo",
+                            "En estado solido"
+                        ],
+                        correct: 2,
+                        explanation: "Durante una meseta en una grafica de enfriamiento, la sustancia esta cambiando de estado (en este caso, gas -> liquido, condensacion). Durante un cambio de estado, AMBOS estados COEXISTEN en equilibrio. A los 10 minutos (dentro de la meseta de 15 minutos), hay tanto liquido como gas presentes."
+                    }
+                ]
+            }
+        ];
+
+        // ==================== ESTADO DEL JUEGO ====================
+        let gameState = {
+            currentLevel: 0,
+            currentQuestion: 0,
+            score: 0,
+            levelScores: [0, 0, 0, 0],
+            levelCorrect: [0, 0, 0, 0],
+            answered: false,
+            timer: null,
+            timeLeft: 60,
+            totalQuestions: 0,
+            totalCorrect: 0
+        };
+
+        // ==================== INICIALIZACION ====================
+        function init() {
+            createStars();
+            createParticles();
+        }
+
+        function createStars() {
+            const container = document.getElementById('stars');
+            for (let i = 0; i < 150; i++) {
+                const star = document.createElement('div');
+                star.className = 'star';
+                star.style.left = Math.random() * 100 + '%';
+                star.style.top = Math.random() * 100 + '%';
+                star.style.setProperty('--duration', (2 + Math.random() * 3) + 's');
+                star.style.setProperty('--opacity', (0.3 + Math.random() * 0.7));
+                star.style.width = (1 + Math.random() * 2) + 'px';
+                star.style.height = star.style.width;
+                container.appendChild(star);
+            }
+        }
+
+        function createParticles() {
+            const container = document.getElementById('particles');
+            const colors = ['#00f0ff', '#0066ff', '#b829dd', '#00ff88'];
+            for (let i = 0; i < 20; i++) {
+                const p = document.createElement('div');
+                p.className = 'particle';
+                p.style.width = (3 + Math.random() * 5) + 'px';
+                p.style.height = p.style.width;
+                p.style.background = colors[Math.floor(Math.random() * colors.length)];
+                p.style.left = Math.random() * 100 + '%';
+                p.style.top = Math.random() * 100 + '%';
+                p.style.opacity = 0.3 + Math.random() * 0.4;
+                p.style.animation = `float ${5 + Math.random() * 10}s ease-in-out infinite`;
+                p.style.animationDelay = Math.random() * 5 + 's';
+                container.appendChild(p);
+            }
+        }
+
+        // ==================== NAVEGACION DE PANTALLAS ====================
+        function showScreen(screenId) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById(screenId).classList.add('active');
+        }
+
+        function showStartScreen() {
+            showScreen('screen-start');
+            updateLevelDots();
+        }
+
+        // ==================== INICIAR JUEGO ====================
+        function startGame() {
+            gameState = {
+                currentLevel: 0,
+                currentQuestion: 0,
+                score: 0,
+                levelScores: [0, 0, 0, 0],
+                levelCorrect: [0, 0, 0, 0],
+                answered: false,
+                timer: null,
+                timeLeft: 60,
+                totalQuestions: 0,
+                totalCorrect: 0
+            };
+            startLevel(0);
+        }
+
+        function restartGame() {
+            startGame();
+        }
+
+        // ==================== NIVELES ====================
+        function startLevel(levelIndex) {
+            gameState.currentLevel = levelIndex;
+            gameState.currentQuestion = 0;
+            gameState.answered = false;
+            gameState.timeLeft = 60;
+
+            const level = levels[levelIndex];
+
+            document.getElementById('level-number').textContent = 'NIVEL ' + (levelIndex + 1);
+            document.getElementById('level-title').textContent = level.name;
+            document.getElementById('level-desc').textContent = level.subtitle;
+            document.getElementById('hud-level').textContent = (levelIndex + 1) + '/4';
+
+            updateHUD();
+            showScreen('screen-game');
+            loadQuestion();
+        }
+
+        function updateHUD() {
+            const level = levels[gameState.currentLevel];
+            document.getElementById('hud-score').textContent = gameState.score;
+            document.getElementById('hud-question').textContent = (gameState.currentQuestion + 1) + '/' + level.questions.length;
+
+            const correct = gameState.levelCorrect[gameState.currentLevel];
+            const total = gameState.currentQuestion + (gameState.answered ? 1 : 0);
+            const accuracy = total > 0 ? (correct / total) * 100 : 100;
+            document.getElementById('hud-energy').style.width = accuracy + '%';
+        }
+
+        // ==================== PREGUNTAS ====================
+        function loadQuestion() {
+            const level = levels[gameState.currentLevel];
+            const question = level.questions[gameState.currentQuestion];
+
+            gameState.answered = false;
+            gameState.timeLeft = 60;
+
+            document.getElementById('question-number').textContent = 
+                'PREGUNTA ' + (gameState.currentQuestion + 1) + ' DE ' + level.questions.length;
+            document.getElementById('question-text').textContent = question.text;
+
+            const extraContainer = document.getElementById('question-extra');
+            extraContainer.innerHTML = '';
+
+            if (question.hasGraph) {
+                const canvas = document.createElement('canvas');
+                canvas.width = 600;
+                canvas.height = 350;
+                canvas.className = 'question-image';
+                extraContainer.appendChild(canvas);
+
+                if (question.graphType === 'heating') {
+                    drawHeatingGraph(canvas, 80);
+                } else if (question.graphType === 'water') {
+                    drawHeatingGraph(canvas, 0, 100);
+                }
+            }
+
+            const optionsGrid = document.getElementById('options-grid');
+            optionsGrid.innerHTML = '';
+
+            question.options.forEach((opt, index) => {
+                const btn = document.createElement('button');
+                btn.className = 'option-btn';
+                btn.textContent = String.fromCharCode(65 + index) + '. ' + opt;
+                btn.onclick = function() { selectAnswer(index); };
+                optionsGrid.appendChild(btn);
+            });
+
+            document.getElementById('feedback-box').classList.remove('show');
+
+            updateHUD();
+            startTimer();
+        }
+
+        // ==================== GRAFICAS ====================
+        function drawHeatingGraph(canvas, meltTemp, boilTemp) {
+            const ctx = canvas.getContext('2d');
+            const w = canvas.width;
+            const h = canvas.height;
+            const padding = 60;
+
+            ctx.clearRect(0, 0, w, h);
+            ctx.fillStyle = 'rgba(0, 10, 20, 0.9)';
+            ctx.fillRect(0, 0, w, h);
+
+            // Grid
+            ctx.strokeStyle = 'rgba(0, 240, 255, 0.1)';
+            ctx.lineWidth = 1;
+            for (let i = 0; i <= 10; i++) {
+                const x = padding + (i / 10) * (w - 2 * padding);
+                const y = padding + (i / 10) * (h - 2 * padding);
+                ctx.beginPath();
+                ctx.moveTo(x, padding);
+                ctx.lineTo(x, h - padding);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(padding, y);
+                ctx.lineTo(w - padding, y);
+                ctx.stroke();
+            }
+
+            // Ejes
+            ctx.strokeStyle = '#00f0ff';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(padding, padding);
+            ctx.lineTo(padding, h - padding);
+            ctx.lineTo(w - padding, h - padding);
+            ctx.stroke();
+
+            // Etiquetas
+            ctx.fillStyle = '#00f0ff';
+            ctx.font = '14px Rajdhani';
+            ctx.textAlign = 'center';
+            ctx.fillText('Tiempo (min)', w / 2, h - 15);
+
+            ctx.save();
+            ctx.translate(20, h / 2);
+            ctx.rotate(-Math.PI / 2);
+            ctx.fillText('Temperatura (grados C)', 0, 0);
+            ctx.restore();
+
+            // Dibujar curva
+            ctx.strokeStyle = '#00ff88';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+
+            const graphW = w - 2 * padding;
+            const graphH = h - 2 * padding;
+            const maxTemp = boilTemp ? 140 : 120;
+            const maxTime = 60;
+
+            let x = padding;
+            let y = h - padding - (20 / maxTemp) * graphH;
+            ctx.moveTo(x, y);
+
+            if (!boilTemp) {
+                // Gráfica simple con una meseta
+                x = padding + (10 / maxTime) * graphW;
+                y = h - padding - (meltTemp / maxTemp) * graphH;
+                ctx.lineTo(x, y);
+
+                x = padding + (30 / maxTime) * graphW;
+                ctx.lineTo(x, y);
+
+                x = padding + (45 / maxTime) * graphW;
+                y = h - padding - (110 / maxTemp) * graphH;
+                ctx.lineTo(x, y);
+
+                x = padding + (50 / maxTime) * graphW;
+                ctx.lineTo(x, y);
+
+                x = padding + (55 / maxTime) * graphW;
+                y = h - padding - (130 / maxTemp) * graphH;
+                ctx.lineTo(x, y);
+
+                ctx.fillStyle = '#b829dd';
+                ctx.font = 'bold 12px Orbitron';
+                ctx.fillText('A', padding + 5, h - padding - (40 / maxTemp) * graphH);
+                ctx.fillText('B', padding + (18 / maxTime) * graphW, h - padding - (meltTemp / maxTemp) * graphH - 10);
+                ctx.fillText('C', padding + (35 / maxTime) * graphW, h - padding - (80 / maxTemp) * graphH);
+
+                ctx.strokeStyle = 'rgba(255, 204, 0, 0.5)';
+                ctx.setLineDash([5, 5]);
+                ctx.beginPath();
+                ctx.moveTo(padding, h - padding - (meltTemp / maxTemp) * graphH);
+                ctx.lineTo(w - padding, h - padding - (meltTemp / maxTemp) * graphH);
+                ctx.stroke();
+                ctx.setLineDash([]);
+
+                ctx.fillStyle = '#ffcc00';
+                ctx.fillText(meltTemp + ' grados C', w - padding + 30, h - padding - (meltTemp / maxTemp) * graphH + 5);
+            } else {
+                // Gráfica del agua con dos mesetas
+                x = padding + (8 / maxTime) * graphW;
+                y = h - padding - (0 / maxTemp) * graphH;
+                ctx.lineTo(x, y);
+
+                x = padding + (25 / maxTime) * graphW;
+                ctx.lineTo(x, y);
+
+                x = padding + (40 / maxTime) * graphW;
+                y = h - padding - (100 / maxTemp) * graphH;
+                ctx.lineTo(x, y);
+
+                x = padding + (55 / maxTime) * graphW;
+                ctx.lineTo(x, y);
+
+                x = padding + (58 / maxTime) * graphW;
+                y = h - padding - (130 / maxTemp) * graphH;
+                ctx.lineTo(x, y);
+
+                ctx.fillStyle = '#b829dd';
+                ctx.font = 'bold 12px Orbitron';
+                ctx.fillText('Solido', padding + 3, h - padding - (15 / maxTemp) * graphH);
+                ctx.fillText('Fusion', padding + (15 / maxTime) * graphW, h - padding - (15 / maxTemp) * graphH);
+                ctx.fillText('Liquido', padding + (30 / maxTime) * graphW, h - padding - (60 / maxTemp) * graphH);
+                ctx.fillText('Ebullicion', padding + (47 / maxTime) * graphW, h - padding - (90 / maxTemp) * graphH);
+                ctx.fillText('Gas', padding + (59 / maxTime) * graphW, h - padding - (120 / maxTemp) * graphH);
+
+                // Lineas de temperatura
+                ctx.strokeStyle = 'rgba(255, 204, 0, 0.5)';
+                ctx.setLineDash([5, 5]);
+                ctx.beginPath();
+                ctx.moveTo(padding, h - padding);
+                ctx.lineTo(w - padding, h - padding);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(padding, h - padding - (100 / maxTemp) * graphH);
+                ctx.lineTo(w - padding, h - padding - (100 / maxTemp) * graphH);
+                ctx.stroke();
+                ctx.setLineDash([]);
+
+                ctx.fillStyle = '#ffcc00';
+                ctx.fillText('0 grados C', w - padding + 30, h - padding + 5);
+                ctx.fillText('100 grados C', w - padding + 35, h - padding - (100 / maxTemp) * graphH + 5);
+            }
+
+            ctx.stroke();
+        }
+
+        // ==================== TIMER ====================
+        function startTimer() {
+            if (gameState.timer) clearInterval(gameState.timer);
+
+            const timerEl = document.getElementById('timer');
+            timerEl.classList.remove('urgent');
+            timerEl.textContent = '60';
+
+            gameState.timer = setInterval(function() {
+                gameState.timeLeft--;
+                timerEl.textContent = gameState.timeLeft;
+
+                if (gameState.timeLeft <= 10) {
+                    timerEl.classList.add('urgent');
+                }
+
+                if (gameState.timeLeft <= 0) {
+                    clearInterval(gameState.timer);
+                    if (!gameState.answered) {
+                        selectAnswer(-1); // Time out
+                    }
+                }
+            }, 1000);
+        }
+
+        function stopTimer() {
+            if (gameState.timer) {
+                clearInterval(gameState.timer);
+                gameState.timer = null;
+            }
+        }
+
+        // ==================== SELECCIONAR RESPUESTA ====================
+        function selectAnswer(selectedIndex) {
+            if (gameState.answered) return;
+            gameState.answered = true;
+            stopTimer();
+
+            const level = levels[gameState.currentLevel];
+            const question = level.questions[gameState.currentQuestion];
+            const isCorrect = selectedIndex === question.correct;
+
+            const options = document.querySelectorAll('.option-btn');
+
+            if (selectedIndex === -1) {
+                // Time out - marcar como incorrecta
+                options.forEach(function(btn, idx) {
+                    btn.classList.add('disabled');
+                    if (idx === question.correct) {
+                        btn.classList.add('correct');
+                    }
+                });
+            } else {
+                options.forEach(function(btn, idx) {
+                    btn.classList.add('disabled');
+                    if (idx === question.correct) {
+                        btn.classList.add('correct');
+                    } else if (idx === selectedIndex && !isCorrect) {
+                        btn.classList.add('incorrect');
+                    }
+                });
+            }
+
+            // Actualizar puntuacion
+            if (isCorrect) {
+                const timeBonus = Math.floor(gameState.timeLeft / 10);
+                const points = 100 + timeBonus * 10;
+                gameState.score += points;
+                gameState.levelScores[gameState.currentLevel] += points;
+                gameState.levelCorrect[gameState.currentLevel]++;
+                gameState.totalCorrect++;
+            }
+
+            gameState.totalQuestions++;
+
+            // Mostrar feedback
+            const feedbackBox = document.getElementById('feedback-box');
+            const feedbackTitle = document.getElementById('feedback-title');
+            const feedbackText = document.getElementById('feedback-text');
+
+            if (isCorrect) {
+                feedbackBox.className = 'feedback-box correct show';
+                feedbackTitle.textContent = '✅ CORRECTO';
+            } else {
+                feedbackBox.className = 'feedback-box incorrect show';
+                feedbackTitle.textContent = selectedIndex === -1 ? '⏱️ TIEMPO AGOTADO' : '❌ INCORRECTO';
+            }
+
+            feedbackText.textContent = question.explanation;
+
+            updateHUD();
+
+            // Siguiente pregunta o nivel
+            setTimeout(function() {
+                if (gameState.currentQuestion < level.questions.length - 1) {
+                    gameState.currentQuestion++;
+                    loadQuestion();
+                } else {
+                    showLevelResult();
+                }
+            }, 4000);
+        }
+
+        // ==================== RESULTADO DE NIVEL ====================
+        function showLevelResult() {
+            const level = levels[gameState.currentLevel];
+            const correct = gameState.levelCorrect[gameState.currentLevel];
+            const total = level.questions.length;
+            const accuracy = Math.round((correct / total) * 100);
+            const levelScore = gameState.levelScores[gameState.currentLevel];
+
+            document.getElementById('result-icon').textContent = accuracy >= 80 ? '🏆' : accuracy >= 60 ? '⭐' : '🔧';
+            document.getElementById('result-title').textContent = accuracy >= 80 ? 'NIVEL COMPLETADO!' : accuracy >= 60 ? 'NIVEL SUPERADO' : 'NIVEL COMPLETADO';
+            document.getElementById('result-story').textContent = level.story;
+            document.getElementById('stat-correct').textContent = correct + '/' + total;
+            document.getElementById('stat-score').textContent = levelScore;
+            document.getElementById('stat-accuracy').textContent = accuracy + '%';
+
+            const nextBtn = document.getElementById('next-level-btn');
+            if (gameState.currentLevel < levels.length - 1) {
+                nextBtn.textContent = 'SIGUIENTE NIVEL →';
+                nextBtn.onclick = nextLevel;
+                nextBtn.style.display = 'inline-block';
+            } else {
+                nextBtn.textContent = 'VER RESULTADO FINAL →';
+                nextBtn.onclick = showFinalResult;
+                nextBtn.style.display = 'inline-block';
+            }
+
+            showScreen('screen-level-result');
+        }
+
+        function nextLevel() {
+            startLevel(gameState.currentLevel + 1);
+        }
+
+        // ==================== RESULTADO FINAL ====================
+        function showFinalResult() {
+            const totalQuestions = levels.reduce(function(sum, l) { return sum + l.questions.length; }, 0);
+            const totalCorrect = gameState.totalCorrect;
+            const accuracy = Math.round((totalCorrect / totalQuestions) * 100);
+            const totalScore = gameState.score;
+
+            // Determinar rango
+            let rank, badge, story;
+            if (accuracy === 100) {
+                rank = 'ALQUIMISTA COSMICO';
+                badge = '🌟 PUNTAJE PERFECTO';
+                story = '¡Felicidades! Has logrado un PUNTAJE PERFECTO. El nucleo de la estacion ha sido completamente estabilizado. Tu dominio de la materia, los cambios de estado y las propiedades fisicas y quimicas es excepcional. El Comite Cientifico Intergalactico te ha ascendido a ALQUIMISTA COSMICO, el rango mas alto de la estacion. La tripulacion esta a salvo gracias a tu brillante desempeno.';
+            } else if (accuracy >= 80) {
+                rank = 'INGENIERO ESTELAR';
+                badge = '⭐ EXCELENTE DESEMPENO';
+                story = '¡Excelente trabajo! Has estabilizado el nucleo con un desempeno sobresaliente. Tu conocimiento de los estados de la materia y sus propiedades ha salvado la estacion. El Comite te ha otorgado el rango de INGENIERO ESTELAR. Con un poco mas de practica, podras alcanzar el puntaje perfecto.';
+            } else if (accuracy >= 60) {
+                rank = 'TECNICO ESPACIAL';
+                badge = '✅ MISION CUMPLIDA';
+                story = 'Has completado la mision con un desempeno aceptable. El nucleo esta parcialmente estabilizado, aunque algunos sistemas requieren revision. Has demostrado conocimientos solidos pero hay areas que necesitan refuerzo. Sigue practicando con las graficas de calentamiento y las propiedades intensivas.';
+            } else {
+                rank = 'APRENDIZ GALACTICO';
+                badge = '📚 NECESITA PRACTICA';
+                story = 'La mision ha sido completada pero el nucleo requiere monitoreo continuo. Necesitas reforzar tus conocimientos sobre el modelo cinetico-molecular, los cambios de estado y la diferencia entre propiedades intensivas y extensivas. No te desanimes, cada intento te acerca mas al dominio de la materia.';
+            }
+
+            document.getElementById('final-rank').textContent = rank;
+            document.getElementById('rank-badge').textContent = badge;
+            document.getElementById('final-total-score').textContent = totalScore;
+            document.getElementById('final-total-correct').textContent = totalCorrect + '/' + totalQuestions;
+            document.getElementById('final-accuracy').textContent = accuracy + '%';
+            document.getElementById('final-story').textContent = story;
+
+            showScreen('screen-final');
+        }
+
+        // ==================== NAVEGACION DE NIVELES EN INICIO ====================
+        function updateLevelDots() {
+            const dots = document.querySelectorAll('.level-dot');
+            dots.forEach(function(dot, index) {
+                dot.classList.remove('active', 'completed');
+                if (index < gameState.currentLevel) {
+                    dot.classList.add('completed');
+                } else if (index === gameState.currentLevel && gameState.totalQuestions > 0) {
+                    dot.classList.add('active');
+                }
+            });
+        }
+
+        // Inicializar
+        init();
+    </script>
+</body>
+</html>
